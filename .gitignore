@@ -1,0 +1,12 @@
+# Ambiente virtual
+venv/
+
+# Variáveis de ambiente (Chaves secretas)
+.env
+
+# Arquivos gerados pelo agente (para não sujar o repo)
+*.txt
+
+# Arquivos do sistema
+__pycache__/
+.DS_Store
