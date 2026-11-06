@@ -4,6 +4,9 @@ import streamlit as st
 from dotenv import load_dotenv
 from agentmold import Agent, tool
 import datetime
+from zoneinfo import ZoneInfo
+from datetime import datetime
+import re
 
 # --- CONFIGURAÇÃO DO AMBIENTE ---
 load_dotenv()
@@ -12,10 +15,45 @@ os.environ["OPENAI_BASE_URL"] = "https://api.groq.com/openai/v1"
 # ==========================================
 # 1. FERRAMENTAS BÁSICAS (As "mãos" dos agentes)
 # ==========================================
+
+# * Nova linha adicionada
 @tool
-def get_current_time() -> str:
-    """Get the current date and time."""
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def get_current_time(city: str = "São Paulo") -> str:
+    """Get the current time for a given city (e.g., 'Londres', 'Tóquio')."""
+    try:
+        # Mapeamento simples de nomes de cidades para fusos IANA
+        timezone_map = {
+            "são paulo": "America/Sao_Paulo",
+            "sao paulo": "America/Sao_Paulo",
+            "londres": "Europe/London",
+            "london": "Europe/London",
+            "tóquio": "Asia/Tokyo",
+            "tokyo": "Asia/Tokyo",
+            "nova york": "America/New_York",
+            "new york": "America/New_York",
+            "paris": "Europe/Paris",
+            "berlim": "Europe/Berlin",
+            "berlin": "Europe/Berlin",
+            "sydney": "Australia/Sydney",
+            "dubai": "Asia/Dubai",
+            "singapura": "Asia/Singapore",
+        }
+        
+        # Normaliza o nome da cidade (minúsculas, sem acentos)
+        city_key = city.lower().strip()
+        timezone_name = timezone_map.get(city_key)
+        
+        if not timezone_name:
+            return f"Não tenho o fuso horário configurado para '{city}'. Tente Londres, Tóquio, Nova York, Paris, etc."
+        
+        # Obtém a hora atual no fuso horário especificado
+        tz = ZoneInfo(timezone_name)
+        now = datetime.now(tz)
+        
+        # Formata a resposta
+        return f"A hora atual em {city} é {now.strftime('%H:%M:%S')} do dia {now.strftime('%d/%m/%Y')} (fuso: {timezone_name})."
+    except Exception as e:
+        return f"Erro ao buscar o horário: {e}"
 
 @tool
 def calculate(expression: str) -> str:
@@ -82,7 +120,16 @@ llm_config = {"provider": "openai", "model": "openai/gpt-oss-20b"}
 def carregar_agentes():
     agente_clima = Agent(name="Especialista em Clima", instructions="Você é um meteorologista. Use get_weather.", tools=[get_weather], llm=llm_config)
     agente_arquivos = Agent(name="Especialista em Arquivos", instructions="Gerencie arquivos. Use read_file e write_to_file.", tools=[read_file, write_to_file], llm=llm_config)
-    agente_financeiro = Agent(name="Especialista Financeiro", instructions="Faça cálculos e CEPs. Use calculate e search_cep.", tools=[calculate, search_cep], llm=llm_config)
+    agente_financeiro = Agent(
+        name="Especialista Financeiro", 
+        instructions="Faça cálculos, CEPs e consulte horas. Use calculate, search_cep e get_current_time.", 
+        tools=[calculate, search_cep, get_current_time],
+        llm=llm_config
+    )
+
+
+    # agente_financeiro = Agent(name="Especialista Financeiro", instructions="Faça cálculos e CEPs. Use calculate e search_cep.", tools=[calculate, search_cep, get_current_time], llm=llm_config)
+
 
     @tool
     def chamar_clima(pergunta: str) -> str:
@@ -101,7 +148,7 @@ def carregar_agentes():
 
     supervisor = Agent(
         name="Supervisor",
-        instructions="Você é um gerente. Chame o especialista correto para responder ao usuário. Não use markdown (**).",
+        instructions="Você é um gerente. SEMPRE que o usuário perguntar sobre horas, cálculos, CEP, clima ou arquivos, você DEVE chamar a ferramenta do especialista correspondente. NUNCA tente responder sozinho sem usar as ferramentas. Não use markdown (**).",
         tools=[chamar_clima, chamar_arquivos, chamar_financeiro],
         llm=llm_config,
     )
