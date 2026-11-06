@@ -10,3 +10,5 @@ venv/
 # Arquivos do sistema
 __pycache__/
 .DS_Store
+
+chave_key.md
