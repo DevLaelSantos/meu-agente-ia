@@ -160,7 +160,7 @@ supervisor = carregar_agentes()
 # 3. INTERFACE DO STREAMLIT
 # ==========================================
 st.set_page_config(page_title="Agente IA", page_icon="🤖")
-st.title("🤖 Meu Assistente Pessoal")
+st.title("🤖 Assitente em Desenvolvimento!")
 st.markdown("Converse com o seu agente multiagente em tempo real.")
 
 # Inicializa o histórico de mensagens na sessão
